@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import HeroCard from './components/dashboard/HeroCard';
-import AssignmentSection from './components/dashboard/AssignmentSection';
-import FocusCard from './components/dashboard/FocusCard';
-import CourseOverview from './components/dashboard/CourseOverview';
-import StatsSection from './components/dashboard/StatsSection';
+import Classroom from './components/dashboard/Classroom';
+import FocusMode from './components/dashboard/FocusMode';
 import Login from './components/auth/Login';
 import ProfileSetupForm from './components/auth/ProfileSetupForm';
 import './styles/theme.css';
@@ -17,50 +15,63 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('login');
   const [googleUserData, setGoogleUserData] = useState<any>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('google_token');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
-      if (parsedUser?.googleId) {
-        setUser(parsedUser);
-        setOnboardingStep('dashboard');
-      } else {
-        localStorage.removeItem('user');
-        setUser(null);
-        setOnboardingStep('login');
-      }
+      setUser(parsedUser);
+      setAccessToken(savedToken);
+      setOnboardingStep('dashboard');
     } else {
       setOnboardingStep('login');
     }
   }, []);
 
-  const handleLoginSuccess = (credentialResponse: any) => {
+  const handleLoginSuccess = async (tokenResponse: any) => {
     try {
-      const token = credentialResponse.credential;
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
+      const token = tokenResponse.access_token;
+      setAccessToken(token);
+      localStorage.setItem('google_token', token);
 
-      const decoded = JSON.parse(jsonPayload);
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        if (parsedUser.googleId === decoded.sub) {
-          setUser(parsedUser);
-          setOnboardingStep('dashboard');
-          return;
-        }
-      }
+      // Fetch user info from Google using the access token
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const decoded = await userInfoResponse.json();
 
-      setGoogleUserData({
+      const googleInfo = {
         googleId: decoded.sub,
         googleName: decoded.name,
         googlePictureUrl: decoded.picture,
         googleEmail: decoded.email,
-      });
+      };
+
+      // Try to log in first
+      try {
+        const loginResponse = await fetch('http://127.0.0.1:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(googleInfo),
+        });
+
+        if (loginResponse.ok) {
+          const userData = await loginResponse.json();
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          setOnboardingStep('dashboard');
+          return;
+        }
+      } catch (e) {
+        // Ignore error, proceed to signup
+      }
+
+      // If not found or error, proceed to signup
+      setGoogleUserData(googleInfo);
       setOnboardingStep('profile_setup');
     } catch (error) {
       console.error('Error processing Google login:', error);
@@ -101,8 +112,10 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setUser(null);
     setGoogleUserData(null);
+    setAccessToken(null);
     setOnboardingStep('login');
     localStorage.removeItem('user');
+    localStorage.removeItem('google_token');
   };
 
   if (onboardingStep === 'login') {
@@ -124,22 +137,33 @@ const App: React.FC = () => {
   if (onboardingStep === 'dashboard' && user) {
     return (
       <div className="app-container">
-        <Sidebar user={user} onLogout={handleLogout} />
+        <Sidebar 
+          user={user} 
+          onLogout={handleLogout} 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+        />
         
         <main className="main-content">
-          <Navbar user={user} />
+          <Navbar user={user} onLogout={handleLogout} />
           
-          <div className="dashboard-content">
-            <div className="content-left">
-              <HeroCard user={user} />
-              <AssignmentSection />
-            </div>
-            
-            <div className="content-right">
-              <FocusCard />
-              <CourseOverview />
-              <StatsSection />
-            </div>
+          <div className="dashboard-content id-layout">
+            {activeTab === 'dashboard' && (
+              <>
+                <HeroCard user={user} />
+              </>
+            )}
+            {activeTab === 'classroom' && (
+              <Classroom accessToken={accessToken} />
+            )}
+            {activeTab === 'focus' && (
+              <FocusMode />
+            )}
+            {activeTab !== 'dashboard' && activeTab !== 'classroom' && activeTab !== 'focus' && (
+              <div className="placeholder-view">
+                <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} coming soon!</h2>
+              </div>
+            )}
           </div>
         </main>
 

@@ -7,29 +7,67 @@ interface HeroCardProps {
 
 const HeroCard: React.FC<HeroCardProps> = ({ user }) => {
   return (
-    <div className="hero-card">
-      <div className="hero-content">
-        <span className="hero-badge">Welcome Back</span>
-        <h2>Hello, {user.given_name || user.name}! <br />You're on a roll.</h2>
-        <p>You have 5 assignments due this week. <br />Keep up the great momentum!</p>
-        
-        <div className="hero-stats">
-          <div className="stat">
-            <span className="stat-value">85%</span>
-            <span className="stat-label">Completion</span>
+    <div className="id-card-container">
+      <div className="student-id-card glass-card">
+        {/* Card Header - University Name */}
+        <div className="id-card-header">
+          <div className="id-logo">A</div>
+          <div className="university-info">
+            <h3>{user.universityName}</h3>
+            <span>Student Identification Card</span>
           </div>
-          <div className="stat-divider"></div>
-          <div className="stat">
-            <span className="stat-value">12</span>
-            <span className="stat-label">Tasks Done</span>
+        </div>
+
+        <div className="id-card-body">
+          {/* Left Side - Photo */}
+          <div className="id-photo-section">
+            <div className="photo-frame">
+              <img 
+                src={user.googlePictureUrl} 
+                alt={user.fullName} 
+                className="id-photo"
+              />
+            </div>
+            <div className="id-status-badge">ACTIVE</div>
           </div>
+
+          {/* Right Side - Details */}
+          <div className="id-details-section">
+            <div className="detail-group">
+              <label>NAME</label>
+              <p className="detail-value">{user.fullName || user.googleName}</p>
+            </div>
+            <div className="detail-row">
+              <div className="detail-group">
+                <label>COURSE</label>
+                <p className="detail-value">{user.courseBranch}</p>
+              </div>
+              <div className="detail-group">
+                <label>YEAR</label>
+                <p className="detail-value">{user.graduationYear}</p>
+              </div>
+            </div>
+            <div className="detail-group">
+              <label>STUDENT EMAIL</label>
+              <p className="detail-value">{user.studentEmail}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Footer - Barcode / Decorative */}
+        <div className="id-card-footer">
+          <div className="barcode-placeholder">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <p className="id-number">ID NO: {user._id?.substring(18).toUpperCase() || 'STU-2026'}</p>
         </div>
       </div>
       
-      <div className="hero-visual">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-      </div>
+      {/* Background Decor */}
+      <div className="bg-decor-blob blob-1"></div>
+      <div className="bg-decor-blob blob-2"></div>
     </div>
   );
 };

@@ -1,12 +1,13 @@
 import React from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import './Navbar.css';
 
 interface NavbarProps {
   user: any;
+  onLogout: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -17,22 +18,29 @@ const Navbar: React.FC<NavbarProps> = ({ user }) => {
   return (
     <nav className="navbar">
       <div className="navbar-greeting">
-        <h1>{getGreeting()}, {user.given_name || user.name}</h1>
+        <h1>{getGreeting()}, {user.fullName || user.googleName}</h1>
         <p>Ready to tackle your tasks today?</p>
       </div>
 
       <div className="navbar-actions">
-        <div className="search-container glass-card">
-          <Search size={18} className="search-icon" />
-          <input type="text" placeholder="Search anything..." />
-        </div>
-
         <button className="action-btn glass-card">
           <Bell size={20} />
           <span className="notification-dot"></span>
         </button>
 
-        <img src={user.picture} alt={user.name} className="user-avatar-img glass-card" />
+        <button 
+          className="action-btn glass-card logout-action-btn" 
+          onClick={onLogout}
+          title="Logout"
+        >
+          <LogOut size={20} />
+        </button>
+
+        <img 
+          src={user.googlePictureUrl} 
+          alt={user.fullName} 
+          className="user-avatar-img glass-card" 
+        />
       </div>
     </nav>
   );

@@ -1,0 +1,239 @@
+.focus-mode-container {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 100px);
+  background: #050505;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 24px;
+  margin: 1rem;
+  box-shadow: inset 0 0 150px rgba(0, 0, 0, 0.9);
+}
+
+/* Atmospheric Effects */
+.focus-mode-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.8) 100%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.desk-surface {
+  position: absolute;
+  bottom: 0;
+  width: 120%;
+  height: 35%;
+  background: linear-gradient(to bottom, #1a120b 0%, #050505 100%);
+  transform: perspective(1000px) rotateX(20deg);
+  z-index: 1;
+  border-top: 1px solid rgba(255, 179, 71, 0.05);
+}
+
+.ambient-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Candle System */
+.candle-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  margin-bottom: 4rem;
+  transition: transform 0.5s ease-in-out;
+}
+
+.candle-body {
+  width: 50px;
+  background: linear-gradient(to right, 
+    #e0e0d5 0%, 
+    #f5f5f0 40%, 
+    #f5f5f0 60%, 
+    #d1d1c2 100%
+  );
+  border-radius: 4px 4px 8px 8px;
+  position: relative;
+  box-shadow: 
+    inset 0 10px 20px rgba(255, 255, 255, 0.3),
+    0 5px 15px rgba(0, 0, 0, 0.5);
+  transition: height 1s linear;
+  transform-origin: bottom;
+}
+
+/* Wax Drips */
+.wax-drip {
+  position: absolute;
+  width: 6px;
+  background: #f5f5f0;
+  border-radius: 10px;
+  opacity: 0.8;
+  filter: blur(1px);
+}
+
+.candle-top-hollow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 80%);
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+/* Flame Animation */
+.flame {
+  position: absolute;
+  bottom: 100%;
+  width: 18px;
+  height: 35px;
+  background: linear-gradient(to bottom, 
+    rgba(255,255,255,0.9) 0%, 
+    rgba(255,179,71,0.8) 50%, 
+    rgba(204,85,0,0.6) 80%, 
+    rgba(0,50,255,0.3) 100%
+  );
+  border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
+  filter: blur(0.5px);
+  animation: flicker 0.1s infinite alternate;
+  box-shadow: 0 0 40px rgba(255, 179, 71, 0.4);
+  transform-origin: bottom center;
+}
+
+.volumetric-glow {
+  position: absolute;
+  bottom: 100%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle at center, rgba(255, 179, 71, 0.15) 0%, transparent 70%);
+  transform: translate(-50%, 50%);
+  left: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: glow-pulse 4s infinite ease-in-out;
+}
+
+@keyframes flicker {
+  0% { transform: scale(1) rotate(-1deg); opacity: 0.95; }
+  100% { transform: scale(1.05) rotate(1deg); opacity: 1; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.8; transform: translate(-50%, 50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, 50%) scale(1.1); }
+}
+
+/* UI Elements */
+.focus-ui {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.timer-display {
+  font-family: 'Inter', sans-serif;
+  font-weight: 200;
+  font-size: 5rem;
+  color: #ffb347;
+  letter-spacing: -2px;
+  text-shadow: 0 0 30px rgba(255, 179, 71, 0.3);
+  opacity: 0.9;
+}
+
+.focus-controls {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 179, 71, 0.1);
+  color: rgba(255, 179, 71, 0.6);
+  padding: 0.8rem 2rem;
+  border-radius: 100px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.control-btn:hover {
+  background: rgba(255, 179, 71, 0.05);
+  border-color: rgba(255, 179, 71, 0.3);
+  color: #ffb347;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+}
+
+.control-btn.active {
+  background: rgba(255, 179, 71, 0.1);
+  border-color: #ffb347;
+  color: #ffb347;
+}
+
+/* Dust Particles */
+.particle {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.2;
+  filter: blur(1px);
+  animation: drift linear infinite;
+}
+
+@keyframes drift {
+  from { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.2; }
+  90% { opacity: 0.2; }
+  to { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+}
+
+.mode-selector {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.mode-btn.active {
+  color: #ffb347;
+}
+
+.mode-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #ffb347;
+  box-shadow: 0 0 10px #ffb347;
+}

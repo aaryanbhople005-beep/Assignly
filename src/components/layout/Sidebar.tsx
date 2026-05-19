@@ -14,19 +14,21 @@ import './Sidebar.css';
 interface SidebarProps {
   user: any;
   onLogout: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', active: true },
-  { icon: FileText, label: 'Assignments' },
-  { icon: Zap, label: 'Focus Mode' },
-  { icon: Calendar, label: 'Calendar' },
-  { icon: BookOpen, label: 'Courses' },
-  { icon: BarChart2, label: 'Analytics' },
-  { icon: Settings, label: 'Settings' },
-];
+const Sidebar: React.FC<SidebarProps> = ({ user, onLogout, activeTab, onTabChange }) => {
+  const navItems = [
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { id: 'classroom', icon: BookOpen, label: 'Classroom' },
+    { id: 'assignments', icon: FileText, label: 'Assignments' },
+    { id: 'focus', icon: Zap, label: 'Focus Mode' },
+    { id: 'calendar', icon: Calendar, label: 'Calendar' },
+    { id: 'analytics', icon: BarChart2, label: 'Analytics' },
+    { id: 'settings', icon: Settings, label: 'Settings' },
+  ];
 
-const Sidebar: React.FC<SidebarProps> = ({ user, onLogout }) => {
   return (
     <aside className="sidebar glass-sidebar">
       <div className="sidebar-logo">
@@ -35,10 +37,11 @@ const Sidebar: React.FC<SidebarProps> = ({ user, onLogout }) => {
       </div>
 
       <nav className="sidebar-nav">
-        {navItems.map((item, index) => (
+        {navItems.map((item) => (
           <button 
-            key={index} 
-            className={`nav-item ${item.active ? 'active' : ''}`}
+            key={item.id} 
+            className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+            onClick={() => onTabChange(item.id)}
           >
             <item.icon size={20} className="nav-icon" />
             <span className="nav-label">{item.label}</span>
