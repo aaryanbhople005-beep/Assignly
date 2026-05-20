@@ -4,30 +4,47 @@ import Navbar from './components/layout/Navbar';
 import HeroCard from './components/dashboard/HeroCard';
 import Classroom from './components/dashboard/Classroom';
 import FocusMode from './components/dashboard/FocusMode';
+import CalendarView from './components/dashboard/Calendar';
 import Login from './components/auth/Login';
 import ProfileSetupForm from './components/auth/ProfileSetupForm';
-import './styles/theme.css';
-import './App.css';
+import ThemeSelector from './components/theme/ThemeSelector';
+import ThemeVisualEffects from './components/theme/ThemeVisualEffects';
+import { ThemeProvider } from './theme/ThemeContext';
+import './index.css';
 
 type OnboardingStep = 'login' | 'profile_setup' | 'dashboard';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('login');
   const [googleUserData, setGoogleUserData] = useState<any>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
+  const handleLogout = () => {
+    setUser(null);
+    setGoogleUserData(null);
+    setAccessToken(null);
+    setOnboardingStep('login');
+    localStorage.removeItem('user');
+    localStorage.removeItem('google_token');
+  };
+
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const savedToken = localStorage.getItem('google_token');
-    if (savedUser) {
+    
+    // Sanitize token: if it's "undefined" or "null" strings, treat as null
+    const effectiveToken = (savedToken === 'undefined' || savedToken === 'null') ? null : savedToken;
+
+    if (savedUser && effectiveToken) {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser);
-      setAccessToken(savedToken);
+      setAccessToken(effectiveToken);
       setOnboardingStep('dashboard');
     } else {
-      setOnboardingStep('login');
+      // If user is saved but token is missing, force re-login
+      if (savedUser) handleLogout();
     }
   }, []);
 
@@ -109,15 +126,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setGoogleUserData(null);
-    setAccessToken(null);
-    setOnboardingStep('login');
-    localStorage.removeItem('user');
-    localStorage.removeItem('google_token');
-  };
-
   if (onboardingStep === 'login') {
     return <Login onSuccess={handleLoginSuccess} />;
   }
@@ -136,7 +144,8 @@ const App: React.FC = () => {
 
   if (onboardingStep === 'dashboard' && user) {
     return (
-      <div className="app-container">
+      <div className="flex min-h-screen bg-theme-background theme-transition overflow-hidden">
+        <ThemeVisualEffects />
         <Sidebar 
           user={user} 
           onLogout={handleLogout} 
@@ -144,36 +153,49 @@ const App: React.FC = () => {
           onTabChange={setActiveTab} 
         />
         
-        <main className="main-content">
+        <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
           <Navbar user={user} onLogout={handleLogout} />
           
-          <div className="dashboard-content id-layout">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8">
             {activeTab === 'dashboard' && (
-              <>
+              <div className="max-w-7xl mx-auto">
                 <HeroCard user={user} />
-              </>
+              </div>
             )}
             {activeTab === 'classroom' && (
-              <Classroom accessToken={accessToken} />
+              <Classroom accessToken={accessToken} onReauthenticate={handleLogout} />
+            )}
+            {activeTab === 'calendar' && (
+              <CalendarView accessToken={accessToken} onReauthenticate={handleLogout} />
             )}
             {activeTab === 'focus' && (
               <FocusMode />
             )}
-            {activeTab !== 'dashboard' && activeTab !== 'classroom' && activeTab !== 'focus' && (
-              <div className="placeholder-view">
-                <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} coming soon!</h2>
+            {activeTab === 'theme' && (
+              <ThemeSelector />
+            )}
+            {['dashboard', 'classroom', 'focus', 'theme'].indexOf(activeTab) === -1 && (
+              <div className="flex items-center justify-center h-full">
+                <h2 className="text-2xl font-semibold text-theme-text-secondary">
+                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} coming soon!
+                </h2>
               </div>
             )}
           </div>
         </main>
-
-        <div className="bg-glow bg-glow-1"></div>
-        <div className="bg-glow bg-glow-2"></div>
       </div>
     );
   }
 
-  return <div>Loading or Error...</div>;
+  return <div className="flex items-center justify-center h-screen bg-theme-background text-theme-text-primary">Loading...</div>;
+};
+
+const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
 };
 
 export default App;

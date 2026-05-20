@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, Coffee, Zap, Brain } from 'lucide-react';
-import './FocusMode.css';
+import { Play, Pause, RotateCcw, Zap, Sparkles } from 'lucide-react';
 
 type Mode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
@@ -15,19 +14,6 @@ const FocusMode: React.FC = () => {
   const [mode, setMode] = useState<Mode>('pomodoro');
   const [timeLeft, setTimeLeft] = useState(DURATIONS.pomodoro);
   const [isActive, setIsActive] = useState(false);
-  const [particles, setParticles] = useState<{ id: number; left: string; size: number; duration: number; delay: number }[]>([]);
-
-  // Generate ambient particles
-  useEffect(() => {
-    const p = Array.from({ length: 20 }).map((_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      size: Math.random() * 3 + 1,
-      duration: Math.random() * 20 + 10,
-      delay: Math.random() * 10,
-    }));
-    setParticles(p);
-  }, []);
 
   useEffect(() => {
     let interval: any = null;
@@ -37,7 +23,6 @@ const FocusMode: React.FC = () => {
       }, 1000);
     } else if (timeLeft === 0) {
       setIsActive(false);
-      // Play a subtle chime or notification here
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
@@ -61,130 +46,136 @@ const FocusMode: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Candle melting logic
-  const percentageRemaining = (timeLeft / DURATIONS[mode]) * 100;
-  const candleHeight = 100 + (percentageRemaining * 2); // Ranges from 100px to 300px
-
   return (
-    <div className="focus-mode-container">
-      {/* Desk Surface */}
-      <div className="desk-surface"></div>
-
-      {/* Ambient Particles */}
-      <div className="ambient-particles">
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              left: p.left,
-              width: `${p.size}px`,
-              height: `${p.size}px`,
-              animationDuration: `${p.duration}s`,
-              animationDelay: `${p.delay}s`,
-              bottom: '-20px',
-            }}
-          ></div>
-        ))}
+    <div className="h-full flex flex-col items-center justify-center space-y-12 relative overflow-hidden rounded-3xl p-8 bg-theme-background/30 border border-theme-glass backdrop-blur-sm">
+      {/* Background Ambient Motion */}
+      <div className="absolute inset-0 -z-10">
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 180, 270, 360],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-theme-accent/5 blur-[120px] rounded-full"
+        />
+        <motion.div 
+          animate={{ 
+            scale: [1.2, 1, 1.2],
+            rotate: [360, 270, 180, 90, 0],
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-theme-primary/5 blur-[120px] rounded-full"
+        />
       </div>
 
-      {/* Candle System */}
-      <div className="candle-wrapper" style={{ transform: `scale(${0.8 + (percentageRemaining / 500)})` }}>
-        <div className="volumetric-glow"></div>
-        <div className="flame"></div>
-        <div className="candle-body" style={{ height: `${candleHeight}px` }}>
-          <div className="candle-top-hollow"></div>
+      <div className="text-center space-y-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center justify-center gap-2 text-theme-accent mb-2"
+        >
+          <Sparkles className="w-5 h-5" />
+          <span className="text-xs font-bold uppercase tracking-[0.3em]">Zen Protocol Active</span>
+        </motion.div>
+        
+        <div className="flex bg-theme-glass/10 p-1 rounded-2xl border border-theme-glass backdrop-blur-md">
+          {(['pomodoro', 'shortBreak', 'longBreak'] as Mode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => handleModeChange(m)}
+              className={`px-6 py-2 rounded-xl text-sm font-bold transition-all duration-300 ${
+                mode === m 
+                ? 'bg-theme-accent text-theme-background shadow-lg shadow-theme-accent/20' 
+                : 'text-theme-text-secondary hover:text-theme-text-primary'
+              }`}
+            >
+              {m === 'pomodoro' ? 'Deep Work' : m === 'shortBreak' ? 'Short Rest' : 'Long Rest'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Timer Display */}
+      <div className="relative group">
+        <motion.div 
+          animate={isActive ? { scale: [1, 1.02, 1] } : {}}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-64 h-64 md:w-80 md:h-80 rounded-full border-8 border-theme-glass flex items-center justify-center relative shadow-2xl shadow-theme-accent/5"
+        >
+          <div className="text-6xl md:text-8xl font-black font-mono tracking-tighter text-theme-text-primary drop-shadow-2xl">
+            {formatTime(timeLeft)}
+          </div>
           
-          {/* Dynamic Wax Drips */}
-          <motion.div 
-            className="wax-drip" 
-            animate={{ height: [10, 40, 40], top: [20, 80, 80], opacity: [0, 0.8, 0] }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            style={{ left: '5px' }}
-          />
-          <motion.div 
-            className="wax-drip" 
-            animate={{ height: [15, 60, 60], top: [10, 120, 120], opacity: [0, 0.6, 0] }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 5 }}
-            style={{ right: '8px' }}
-          />
-        </div>
+          {/* Progress Ring Overlay */}
+          <svg className="absolute inset-0 w-full h-full -rotate-90">
+            <circle
+              cx="50%"
+              cy="50%"
+              r="48%"
+              fill="none"
+              stroke="var(--theme-accent)"
+              strokeWidth="8"
+              strokeDasharray="100 100"
+              strokeDashoffset={100 - (timeLeft / DURATIONS[mode] * 100)}
+              className="transition-all duration-1000 ease-linear opacity-20"
+              style={{ strokeDasharray: '283', strokeDashoffset: `${283 - (timeLeft / DURATIONS[mode] * 283)}` }}
+            />
+          </svg>
+        </motion.div>
+
+        {isActive && (
+          <div className="absolute -inset-8 bg-theme-accent/5 blur-3xl rounded-full -z-10 animate-pulse"></div>
+        )}
       </div>
 
-      {/* UI Elements */}
-      <div className="focus-ui">
-        <div className="mode-selector">
-          <button 
-            className={`mode-btn ${mode === 'pomodoro' ? 'active' : ''}`}
-            onClick={() => handleModeChange('pomodoro')}
-          >
-            Deep Work
-          </button>
-          <button 
-            className={`mode-btn ${mode === 'shortBreak' ? 'active' : ''}`}
-            onClick={() => handleModeChange('shortBreak')}
-          >
-            Rest
-          </button>
-          <button 
-            className={`mode-btn ${mode === 'longBreak' ? 'active' : ''}`}
-            onClick={() => handleModeChange('longBreak')}
-          >
-            Long Rest
-          </button>
-        </div>
+      <div className="flex items-center gap-6 relative z-10">
+        <motion.button 
+          whileHover={{ scale: 1.1, rotate: -30 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleReset}
+          className="p-4 rounded-2xl glass-card text-theme-text-secondary hover:text-theme-accent transition-colors"
+        >
+          <RotateCcw size={24} />
+        </motion.button>
 
-        <div className="timer-display">
-          {formatTime(timeLeft)}
-        </div>
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleToggle}
+          className={`px-12 py-5 rounded-3xl font-black text-xl transition-all duration-500 flex items-center gap-3 shadow-xl ${
+            isActive 
+            ? 'bg-theme-glass/20 text-theme-text-primary border border-theme-glass' 
+            : 'bg-theme-accent text-theme-background shadow-theme-accent/30'
+          }`}
+        >
+          {isActive ? (
+            <><Pause size={24} fill="currentColor" /> PAUSE</>
+          ) : (
+            <><Play size={24} fill="currentColor" /> FOCUS</>
+          )}
+        </motion.button>
 
-        <div className="focus-controls">
-          <button className="control-btn" onClick={handleReset}>
-            <RotateCcw size={20} />
-          </button>
-          
-          <button 
-            className={`control-btn ${isActive ? 'active' : ''}`} 
-            onClick={handleToggle}
-            style={{ width: '180px' }}
-          >
-            {isActive ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
-                <Pause size={20} fill="currentColor" />
-                <span>Pause</span>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
-                <Play size={20} fill="currentColor" />
-                <span>Focus</span>
-              </div>
-            )}
-          </button>
-
-          <button className="control-btn" style={{ opacity: 0.3, cursor: 'not-allowed' }}>
-            <Zap size={20} />
-          </button>
-        </div>
+        <motion.button 
+          whileHover={{ scale: 1.1, rotate: 30 }}
+          whileTap={{ scale: 0.9 }}
+          className="p-4 rounded-2xl glass-card text-theme-text-secondary hover:text-theme-accent transition-colors"
+        >
+          <Zap size={24} />
+        </motion.button>
       </div>
 
-      {/* Cinematic Overlays */}
-      <div className="vignette-overlay"></div>
-      
+      {/* Floating Status */}
       <AnimatePresence>
-        {timeLeft < 60 && isActive && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.2 }}
-            exit={{ opacity: 0 }}
-            className="final-minute-glow"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(circle at center, rgba(204,85,0,0.3) 0%, transparent 70%)',
-              pointerEvents: 'none',
-              zIndex: 4
-            }}
-          />
+        {isActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute bottom-8 text-theme-accent font-bold tracking-widest text-xs flex items-center gap-2"
+          >
+            <span className="w-2 h-2 bg-theme-accent rounded-full animate-ping"></span>
+            SYNCING WITH BIORHYTHM...
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

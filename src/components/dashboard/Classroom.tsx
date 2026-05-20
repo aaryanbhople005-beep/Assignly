@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, ExternalLink, User, AlertCircle, BookOpen, 
-  CheckCircle2, RotateCcw, FileUp, Calendar, Filter, 
+  Calendar, 
   MessageSquare, ListTodo, Users, ArrowLeft, FileText,
   Play, Globe, GraduationCap, ChevronDown, ChevronRight, Folder, RefreshCw
 } from 'lucide-react';
@@ -10,6 +10,7 @@ import './Classroom.css';
 
 interface ClassroomProps {
   accessToken: string | null;
+  onReauthenticate?: () => void;
 }
 
 interface Teacher {
@@ -84,19 +85,17 @@ interface Person {
 }
 
 type TabType = 'stream' | 'classwork' | 'people';
-type TimeFilter = 'day' | 'week' | 'month' | 'year';
 
 const COURSE_COLORS = [
   '#4285f4', '#34a853', '#fbbc05', '#ea4335', '#a142f4', '#24c1e0', '#ff6d00', '#e91e63'
 ];
 
-const Classroom: React.FC<ClassroomProps> = ({ accessToken }) => {
+const Classroom: React.FC<ClassroomProps> = ({ accessToken, onReauthenticate }) => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('stream');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({ 'no-topic': true });
   
   // State for current course
@@ -106,21 +105,28 @@ const Classroom: React.FC<ClassroomProps> = ({ accessToken }) => {
   const [students, setStudents] = useState<Person[]>([]);
   const [teachers, setTeachers] = useState<Person[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [timeFilter, setTimeFilter] = useState<'day' | 'week' | 'month' | 'year'>('week');
 
   // State for all assignments across courses (for Global Deadlines)
   const [allAssignments, setAllAssignments] = useState<CourseAssignment[]>([]);
   const [isFetchingGlobal, setIsFetchingGlobal] = useState(false);
+  const [isAuthError, setIsAuthError] = useState(false);
 
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     if (!accessToken) return;
     try {
       setLoading(true);
       setError(null);
+      setIsAuthError(false);
       const res = await fetch('https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthError(true);
+          throw new Error('Your session has expired. Please log in again to sync your classroom data.');
+        }
         const errData = await res.json();
         throw new Error(errData.error?.message || 'Failed to load courses.');
       }
@@ -141,145 +147,145 @@ const Classroom: React.FC<ClassroomProps> = ({ accessToken }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
 
   useEffect(() => {
     fetchCourses();
-  }, [accessToken]);
+  }, [fetchCourses]);
 
   // Global fetch for all assignments
-  useEffect(() => {
-    const fetchAllCoursework = async () => {
-      if (!accessToken || courses.length === 0) return;
-      
-      try {
-        setIsFetchingGlobal(true);
-        const headers = { Authorization: `Bearer ${accessToken}` };
-        const fetchedTasks: CourseAssignment[] = [];
+  const fetchAllCoursework = useCallback(async () => {
+    if (!accessToken || courses.length === 0) return;
+    
+    try {
+      setIsFetchingGlobal(true);
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const fetchedTasks: CourseAssignment[] = [];
 
-        await Promise.all(courses.map(async (course) => {
-          try {
-            const res = await fetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork`, { headers });
-            if (!res.ok) return;
-            const data = await res.json();
-            
-            if (data.courseWork) {
-              const courseTasks = data.courseWork.map((work: any) => ({
-                type: 'assignment',
-                id: work.id,
-                courseId: work.courseId,
-                title: work.title,
-                dueDate: work.dueDate ? `${work.dueDate.day}/${work.dueDate.month}/${work.dueDate.year}` : undefined,
-                creationTime: work.creationTime,
-                alternateLink: work.alternateLink
-              } as CourseAssignment));
-              fetchedTasks.push(...courseTasks);
-            }
-          } catch (e) {
-            console.error(`Error fetching tasks for ${course.name}:`, e);
+      await Promise.all(courses.map(async (course) => {
+        try {
+          const res = await fetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork`, { headers });
+          if (!res.ok) return;
+          const data = await res.json();
+          
+          if (data.courseWork) {
+            const courseTasks = data.courseWork.map((work: any) => ({
+              type: 'assignment',
+              id: work.id,
+              courseId: work.courseId,
+              title: work.title,
+              dueDate: work.dueDate ? `${work.dueDate.day}/${work.dueDate.month}/${work.dueDate.year}` : undefined,
+              creationTime: work.creationTime,
+              alternateLink: work.alternateLink
+            } as CourseAssignment));
+            fetchedTasks.push(...courseTasks);
           }
-        }));
+        } catch (e) {
+          console.error(`Error fetching tasks for ${course.name}:`, e);
+        }
+      }));
 
-        setAllAssignments(fetchedTasks);
-      } finally {
-        setIsFetchingGlobal(false);
-      }
-    };
-
-    if (courses.length > 0) {
-      fetchAllCoursework();
+      setAllAssignments(fetchedTasks);
+    } finally {
+      setIsFetchingGlobal(false);
     }
   }, [accessToken, courses]);
 
   useEffect(() => {
-    const fetchCourseDetails = async () => {
-      if (!accessToken || !selectedCourse) return;
+    if (courses.length > 0) {
+      fetchAllCoursework();
+    }
+  }, [fetchAllCoursework, courses.length]);
+
+  const fetchCourseDetails = useCallback(async () => {
+    if (!accessToken || !selectedCourse) return;
+    
+    try {
+      setLoading(true);
+      const headers = { Authorization: `Bearer ${accessToken}` };
       
-      try {
-        setLoading(true);
-        const headers = { Authorization: `Bearer ${accessToken}` };
-        
-        const [annRes, classRes, teachRes, studRes, topicRes, matRes] = await Promise.all([
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/announcements`, { headers }),
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWork`, { headers }),
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/teachers`, { headers }),
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/students`, { headers }),
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/topics`, { headers }),
-          fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWorkMaterials`, { headers })
-        ]);
+      const [annRes, classRes, teachRes, studRes, topicRes, matRes] = await Promise.all([
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/announcements`, { headers }),
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWork`, { headers }),
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/teachers`, { headers }),
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/students`, { headers }),
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/topics`, { headers }),
+        fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWorkMaterials`, { headers })
+      ]);
 
-        // Process data even if some requests fail (some courses might not have topics, etc.)
-        const annData = annRes.ok ? await annRes.json() : {};
-        const classData = classRes.ok ? await classRes.json() : {};
-        const teachData = teachRes.ok ? await teachRes.json() : {};
-        const studData = studRes.ok ? await studRes.json() : {};
-        const topicData = topicRes.ok ? await topicRes.json() : {};
-        const matData = matRes.ok ? await matRes.json() : {};
+      // Process data even if some requests fail (some courses might not have topics, etc.)
+      const annData = annRes.ok ? await annRes.json() : {};
+      const classData = classRes.ok ? await classRes.json() : {};
+      const teachData = teachRes.ok ? await teachRes.json() : {};
+      const studData = studRes.ok ? await studRes.json() : {};
+      const topicData = topicRes.ok ? await topicRes.json() : {};
+      const matData = matRes.ok ? await matRes.json() : {};
 
-        const primaryTeacher = teachData.teachers?.[0]?.profile;
-        const teacherInfo = primaryTeacher ? {
-          id: primaryTeacher.id,
-          name: primaryTeacher.name?.fullName || 'Teacher',
-          photoUrl: primaryTeacher.photoUrl?.startsWith('//') ? `https:${primaryTeacher.photoUrl}` : primaryTeacher.photoUrl
-        } : undefined;
+      const primaryTeacher = teachData.teachers?.[0]?.profile;
+      const teacherInfo = primaryTeacher ? {
+        id: primaryTeacher.id,
+        name: primaryTeacher.name?.fullName || 'Teacher',
+        photoUrl: primaryTeacher.photoUrl?.startsWith('//') ? `https:${primaryTeacher.photoUrl}` : primaryTeacher.photoUrl
+      } : undefined;
 
-        setTopics(topicData.topic || []);
-        setAnnouncements((annData.announcements || []).map((ann: any) => ({
-          type: 'announcement', id: ann.id, courseId: ann.courseId, text: ann.text,
-          creationTime: ann.creationTime, alternateLink: ann.alternateLink, teacher: teacherInfo
-        })));
+      setTopics(topicData.topic || []);
+      setAnnouncements((annData.announcements || []).map((ann: any) => ({
+        type: 'announcement', id: ann.id, courseId: ann.courseId, text: ann.text,
+        creationTime: ann.creationTime, alternateLink: ann.alternateLink, teacher: teacherInfo
+      })));
 
-        if (classData.courseWork) {
-          const assignmentsWithSub = await Promise.all(classData.courseWork.map(async (work: any) => {
-            let sub: any = undefined;
-            try {
-              const subRes = await fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWork/${work.id}/studentSubmissions`, { headers });
-              if (subRes.ok) {
-                const subData = await subRes.json();
-                sub = subData.studentSubmissions?.[0];
-              }
-            } catch (e) {}
-            
-            return {
-              type: 'assignment', id: work.id, courseId: work.courseId, title: work.title,
-              description: work.description, topicId: work.topicId, materials: work.materials,
-              dueDate: work.dueDate ? `${work.dueDate.day}/${work.dueDate.month}/${work.dueDate.year}` : undefined,
-              creationTime: work.creationTime, alternateLink: work.alternateLink,
-              submission: sub ? {
-                id: sub.id, state: sub.state, alternateLink: sub.alternateLink,
-                late: sub.late, assignedGrade: sub.assignedGrade, maxPoints: work.maxPoints,
-                submissionTime: sub.updateTime
-              } : undefined
-            } as CourseAssignment;
-          }));
-          setAssignments(assignmentsWithSub);
-        } else {
-          setAssignments([]);
-        }
-
-        setMaterials((matData.courseWorkMaterial || []).map((m: any) => ({
-          type: 'material', id: m.id, title: m.title, description: m.description,
-          creationTime: m.creationTime, alternateLink: m.alternateLink, materials: m.materials, topicId: m.topicId
-        })));
-
-        setTeachers((teachData.teachers || []).map((t: any) => ({
-          id: t.userId, name: t.profile.name?.fullName,
-          photoUrl: t.profile.photoUrl?.startsWith('//') ? `https:${t.profile.photoUrl}` : t.profile.photoUrl
-        })));
-        setStudents((studData.students || []).map((s: any) => ({
-          id: s.userId, name: s.profile.name?.fullName,
-          photoUrl: s.profile.photoUrl?.startsWith('//') ? `https:${s.profile.photoUrl}` : s.profile.photoUrl
-        })));
-
-      } catch (err) {
-        console.error("Course details fetch error:", err);
-      } finally {
-        setLoading(false);
+      if (classData.courseWork) {
+        const assignmentsWithSub = await Promise.all(classData.courseWork.map(async (work: any) => {
+          let sub: any = undefined;
+          try {
+            const subRes = await fetch(`https://classroom.googleapis.com/v1/courses/${selectedCourse.id}/courseWork/${work.id}/studentSubmissions`, { headers });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              sub = subData.studentSubmissions?.[0];
+            }
+          } catch (e) {}
+          
+          return {
+            type: 'assignment', id: work.id, courseId: work.courseId, title: work.title,
+            description: work.description, topicId: work.topicId, materials: work.materials,
+            dueDate: work.dueDate ? `${work.dueDate.day}/${work.dueDate.month}/${work.dueDate.year}` : undefined,
+            creationTime: work.creationTime, alternateLink: work.alternateLink,
+            submission: sub ? {
+              id: sub.id, state: sub.state, alternateLink: sub.alternateLink,
+              late: sub.late, assignedGrade: sub.assignedGrade, maxPoints: work.maxPoints,
+              submissionTime: sub.updateTime
+            } : undefined
+          } as CourseAssignment;
+        }));
+        setAssignments(assignmentsWithSub);
+      } else {
+        setAssignments([]);
       }
-    };
 
-    if (selectedCourse) fetchCourseDetails();
+      setMaterials((matData.courseWorkMaterial || []).map((m: any) => ({
+        type: 'material', id: m.id, title: m.title, description: m.description,
+        creationTime: m.creationTime, alternateLink: m.alternateLink, materials: m.materials, topicId: m.topicId
+      })));
+
+      setTeachers((teachData.teachers || []).map((t: any) => ({
+        id: t.userId, name: t.profile.name?.fullName,
+        photoUrl: t.profile.photoUrl?.startsWith('//') ? `https:${t.profile.photoUrl}` : t.profile.photoUrl
+      })));
+      setStudents((studData.students || []).map((s: any) => ({
+        id: s.userId, name: s.profile.name?.fullName,
+        photoUrl: s.profile.photoUrl?.startsWith('//') ? `https:${s.profile.photoUrl}` : s.profile.photoUrl
+      })));
+
+    } catch (err) {
+      console.error("Course details fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [accessToken, selectedCourse]);
+
+  useEffect(() => {
+    if (selectedCourse) fetchCourseDetails();
+  }, [fetchCourseDetails, selectedCourse]);
 
   const getStatusLabel = (state: string, late?: boolean) => {
     switch (state) {
@@ -517,7 +523,7 @@ const Classroom: React.FC<ClassroomProps> = ({ accessToken }) => {
                   <AnimatePresence>
                     {expandedTopics[tid] && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="topic-items">
-                        {items.map((item, index) => (
+                        {items.map((item) => (
                           <div key={item.id} className="classwork-item glass-card">
                             <div className="item-icon-circle" style={{ background: item.type === 'assignment' && selectedCourse?.color ? `rgba(${parseInt(selectedCourse.color.slice(1,3), 16)}, ${parseInt(selectedCourse.color.slice(3,5), 16)}, ${parseInt(selectedCourse.color.slice(5,7), 16)}, 0.1)` : 'rgba(255,255,255,0.05)' }}>
                                {item.type === 'assignment' ? <ListTodo size={20} style={{ color: selectedCourse?.color }} /> : <BookOpen size={20} />}
@@ -602,7 +608,15 @@ const Classroom: React.FC<ClassroomProps> = ({ accessToken }) => {
           <AlertCircle size={48} color="#ea4335" />
           <h2>Connection Issue</h2>
           <p>{error}</p>
-          <button className="retry-btn" onClick={fetchCourses}>Retry Sync</button>
+          {isAuthError ? (
+            <button className="retry-btn" onClick={onReauthenticate}>
+              <RefreshCw size={16} /> Log in again
+            </button>
+          ) : (
+            <button className="retry-btn" onClick={fetchCourses}>
+              <RefreshCw size={16} /> Retry Sync
+            </button>
+          )}
         </div>
       </div>
     );
