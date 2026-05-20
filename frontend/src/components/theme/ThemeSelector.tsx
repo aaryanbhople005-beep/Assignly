@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../theme/ThemeContext';
-import type { ThemeDefinition } from '../../theme/types';
+import type { ThemeDefinition, ThemePack } from '../../theme/types';
 import { Check, Sparkles, Palette, Zap, Book, Shield, Ghost } from 'lucide-react';
 
 const ThemeCard: React.FC<{ 
