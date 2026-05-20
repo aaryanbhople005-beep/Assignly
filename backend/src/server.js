@@ -25,9 +25,6 @@ const connectDB = async () => {
 
         console.log('MongoDB Connected');
 
-        app.get('/', (req, res) => {
-            res.send('Assignly Backend Running');
-        });
         app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
