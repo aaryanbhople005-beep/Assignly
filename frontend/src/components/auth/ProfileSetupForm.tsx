@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../../config/api';
 // Import Login.css for shared styling, or create ProfileSetupForm.css if more specific styles are needed.
-// Ensure your CSS supports .profile-form, .form-group, label, input, and .submit-button classes.
 import './Login.css'; 
 
 interface ProfileSetupFormProps {
@@ -25,9 +25,10 @@ const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
   const [courseBranch, setCourseBranch] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmitProfileData({
+
+    const payload = {
       googleId,
       googleName,
       googlePictureUrl,
@@ -37,7 +38,29 @@ const ProfileSetupForm: React.FC<ProfileSetupFormProps> = ({
       studentEmail,
       courseBranch,
       graduationYear,
-    });
+    };
+
+    console.log("Submitting profile data:", payload);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      console.log("Profile saved response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save profile');
+      }
+
+      onSubmitProfileData(data);
+    } catch (error) {
+      console.error("API Error during profile submission:", error);
+      alert(`Error saving profile: ${error instanceof Error ? error.message : 'Network error'}`);
+    }
   };
 
   // Effect to update fullName if googleName prop changes, ensuring it's always up-to-date

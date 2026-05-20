@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from './config/api';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import HeroCard from './components/dashboard/HeroCard';
@@ -54,11 +55,11 @@ const AppContent: React.FC = () => {
       setAccessToken(token);
       localStorage.setItem('google_token', token);
 
-      // Fetch user info from Google using the access token
       const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${token}` },
       });
       
+      if (!userInfoResponse.ok) throw new Error('Failed to fetch Google user info');
       const decoded = await userInfoResponse.json();
 
       const googleInfo = {
@@ -68,9 +69,8 @@ const AppContent: React.FC = () => {
         googleEmail: decoded.email,
       };
 
-      // Try to log in first
       try {
-        const loginResponse = await fetch('http://127.0.0.1:5000/api/auth/login', {
+        const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(googleInfo),
@@ -83,15 +83,15 @@ const AppContent: React.FC = () => {
           setOnboardingStep('dashboard');
           return;
         }
-      } catch (e) {
-        // Ignore error, proceed to signup
+      } catch (error) {
+        console.error("Login API failure:", error);
       }
 
-      // If not found or error, proceed to signup
       setGoogleUserData(googleInfo);
       setOnboardingStep('profile_setup');
     } catch (error) {
-      console.error('Error processing Google login:', error);
+      console.error('Google Auth Error:', error);
+      alert('Authentication failed. Please check your connection.');
     }
   };
 
@@ -103,17 +103,15 @@ const AppContent: React.FC = () => {
         fullName: profileData.fullName,
       };
 
-      const response = await fetch('http://127.0.0.1:5000/api/auth/signup', {
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(completeUserData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save profile data');
+        throw new Error(errorData.message || 'Failed to save profile');
       }
 
       const userDataFromAPI = await response.json();
@@ -121,8 +119,8 @@ const AppContent: React.FC = () => {
       localStorage.setItem('user', JSON.stringify(userDataFromAPI));
       setOnboardingStep('dashboard');
     } catch (error: any) {
-      console.error('Profile submission error:', error);
-      alert(`Error saving profile: ${error.message}. Please try again.`);
+      console.error('Profile API Error:', error);
+      alert(`Error saving profile: ${error.message || 'Network unreachable'}`);
     }
   };
 
