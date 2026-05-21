@@ -12,10 +12,10 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentThemeId, setCurrentThemeId] = useState<string>(() => {
-    return localStorage.getItem('assignly-theme') || 'appleGlass';
+    return localStorage.getItem('assignly-theme') || 'light';
   });
 
-  const currentTheme = themes[currentThemeId] || themes.appleGlass;
+  const currentTheme = themes[currentThemeId] || themes.light;
 
   useEffect(() => {
     localStorage.setItem('assignly-theme', currentThemeId);
