@@ -188,10 +188,23 @@ const AppContent: React.FC = () => {
   return <div className="flex items-center justify-center h-screen bg-theme-background text-theme-text-primary">Loading...</div>;
 };
 
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import SettingsLayout from './components/settings/SettingsLayout';
+import './index.css';
+
+// ... (existing imports)
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/*" element={<AppContent />} />
+          <Route path="/settings/*" element={<SettingsLayout />}>
+             {/* Placeholder for nested settings routes */}
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </ThemeProvider>
   );
 };
